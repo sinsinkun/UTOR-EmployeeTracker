@@ -1,23 +1,22 @@
 -- database creation schema
+DROP DATABASE IF EXISTS company_db;
 
-DROP DATABASE IF EXISTS employee_db;
+CREATE DATABASE company_db;
+USE company_db;
 
-CREATE DATABASE employee_db;
-USE employee_db;
-
-CREATE TABLE department (
+CREATE TABLE departments (
   id INTEGER AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(30)
+  department VARCHAR(30)
 );
 
-CREATE TABLE role (
+CREATE TABLE roles (
   id INTEGER AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(30),
   salary DECIMAL(10,2),
   department_id INTEGER
 );
 
-CREATE TABLE employee (
+CREATE TABLE employees (
   id INTEGER AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(30),
   last_name VARCHAR(30),
