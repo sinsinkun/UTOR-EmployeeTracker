@@ -1,0 +1,23 @@
+{
+  "name": "utor-employeetracker",
+  "version": "0.1.0",
+  "description": "simple cli for mysql database",
+  "main": "main.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sinsinkun/UTOR-EmployeeTracker.git"
+  },
+  "author": "JC Xiao",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sinsinkun/UTOR-EmployeeTracker/issues"
+  },
+  "homepage": "https://github.com/sinsinkun/UTOR-EmployeeTracker#readme",
+  "dependencies": {
+    "inquirer": "^7.3.3",
+    "mysql": "^2.18.1"
+  }
+}
