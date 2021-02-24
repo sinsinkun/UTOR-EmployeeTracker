@@ -310,8 +310,8 @@ async function addRole() {
   }
   // check if role already exists
   let r = await db.query('SELECT * FROM roles');
-  for (let i=0; i<allRoles.length; i++) {
-    if (res.title === allRoles[i].title && deptId === allRoles[i].departmentId) {
+  for (let i=0; i<deptList.length; i++) {
+    if (res.title === deptList[i].title && deptId === deptList[i].departmentId) {
       console.log('This role already exists. Only new roles can be added.\n');
       return;
     }
