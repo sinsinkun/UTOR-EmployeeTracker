@@ -209,6 +209,16 @@ async function editEmployees() {
 
   res = await inquirer.prompt([
     {
+      type: 'input',
+      message: 'Please enter the employee\'s new first name: (leave blank for no change)',
+      name: 'firstName'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s new last name: (leave blank for no change)',
+      name: 'lastName'
+    },
+    {
       type: 'list',
       message: 'Please choose the employee\'s new role:',
       choices: rolesStrList,
@@ -217,31 +227,34 @@ async function editEmployees() {
     {
       type: 'input',
       message: 'Please enter the employee\'s new manager\'s first name: (leave blank for no manager)',
-      name: 'newFirstName'
+      name: 'mgrFirstName'
     },
     {
       type: 'input',
       message: 'Please enter the employee\'s new manager\'s last name: (leave blank for no manager)',
-      name: 'newLastName'
+      name: 'mgrLastName'
     }
   ])
+  // change name if not blank
+  if (res.firstName !== '') employee[0].first_name = res.firstName;
+  if (res.lastName !== '') employee[0].last_name = res.lastName;
   // find new role
   for (let i=0; i<rolesStrList.length; i++) {
-    if (rolesStrList[i] === res.role) employee[0].role_id = roleList[i].id;
+    if (rolesStrList[i] === res.newRole) employee[0].role_id = roleList[i].id;
   }
   // find new manager
   if (res.newLastName !== '') {
-    let r = await db.query(`select * from employees where first_name =\'${res.firstName}\' 
-    and last_name=\'${res.lastName}\'`);
+    let r = await db.query(`select * from employees where first_name =\'${res.mgrFirstName}\' 
+    and last_name=\'${res.mgrLastName}\'`);
     if (r.length < 1) {
       console.log('Manager could not be found. Continuing without changing manager.\n');
-      return;
     }
     else employee[0].manager_id = r[0].id;
   }
   else employee[0].manager_id = null;
   // fill in new data
-  let r = await db.query(`update employees set role_id = ${employee[0].role_id}, manager_id = ${employee[0].manager_id} where id = ${employee[0].id}`);
+  let r = await db.query(`update employees set first_name = \'${employee[0].first_name}\', last_name = \'${employee[0].last_name}\', 
+    role_id = ${employee[0].role_id}, manager_id = ${employee[0].manager_id} where id = ${employee[0].id}`);
   if (r.warningCount === 0) console.log('Successfully edited employee record\n');
   else console.log('Something went wrong, please consult your database administrator\n');
 }
