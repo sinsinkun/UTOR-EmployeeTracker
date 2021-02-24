@@ -12,7 +12,7 @@ async function main() {
       {
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['View existing data', 'Edit existing data', 'Add new data'],
+        choices: ['View existing data', 'Edit existing data', 'Delete existing data', 'Add new data'],
         name: 'choice'
       },
       {
@@ -31,6 +31,10 @@ async function main() {
     else if (task.choice === 'Edit existing data' && task.table === 'Departments') await editDepartments();
     else if (task.choice === 'Edit existing data' && task.table === 'Roles') await editRoles();
     else if (task.choice === 'Edit existing data' && task.table === 'Employees') await editEmployees();
+    // if deleting existing data
+    else if (task.choice === 'Delete existing data' && task.table === 'Departments') await delDepartment();
+    else if (task.choice === 'Delete existing data' && task.table === 'Roles') await delRole();
+    else if (task.choice === 'Delete existing data' && task.table === 'Employees') await delEmployee();
     // if adding existing data
     else if (task.choice === 'Add new data' && task.table === 'Departments') await addDepartment();
     else if (task.choice === 'Add new data' && task.table === 'Roles') await addRole();
@@ -91,7 +95,7 @@ async function viewEmployees() {
   for (let i = 0; i < res.length; i++) {
     delete res[i].manager_id;
     // add manager names to res
-    if (managerNames[i] === null) res[i].manager = 'n/a';
+    if (managerNames[i] === null) res[i].manager = null;
     else res[i].manager = `${managerNames[i][0].first_name} ${managerNames[i][0].last_name}`;
   }
   return res;
@@ -256,6 +260,84 @@ async function editEmployees() {
   let r = await db.query(`update employees set first_name = \'${employee[0].first_name}\', last_name = \'${employee[0].last_name}\', 
     role_id = ${employee[0].role_id}, manager_id = ${employee[0].manager_id} where id = ${employee[0].id}`);
   if (r.warningCount === 0) console.log('Successfully edited employee record\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
+}
+
+async function delDepartment() {
+  let deptList = await db.query(`select department from departments`);
+  deptList = deptList.map(arr => arr.department);
+
+  const res = await inquirer.prompt([
+    {
+      type: 'list',
+      message: 'which department would you like to delete?',
+      choices: deptList,
+      name: 'dept'
+    },
+    {
+      type: 'list',
+      message: 'Are you sure you want to delete the entry for this department?',
+      choices: ['Yes','No'],
+      name: 'confirm'
+    }
+  ])
+
+  if (res.confirm === 'No') return;
+  let r = await db.query(`select id from departments where department = \'${res.dept}\'`);
+  let r2 = await db.query(`update roles set department_id = null where department_id = ${r[0].id}`);
+  r = await db.query(`delete from departments where id = ${r[0].id}`);
+  if (r.warningCount === 0 && r2.warningCount === 0) console.log('Successfully deleted department record\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
+}
+
+async function delRole() {
+  let roleList = await db.query(`select roles.id, roles.title, roles.salary, departments.department 
+    from roles left join departments on roles.department_id = departments.id;`);
+  let rolesStrList = roleList.map(role => `Title: ${role.title}, from ${role.department}`);
+  let targetId = null;
+
+  const res = await inquirer.prompt([
+    {
+      type: 'list',
+      message: 'Select which role to remove:',
+      choices: rolesStrList,
+      name: 'targetRole'
+    },
+    {
+      type: 'list',
+      message: 'Are you sure you want to delete this role?',
+      choices: ['Yes','No'],
+      name: 'confirm'
+    }
+  ])
+  if (res.confirm === 'No') return;
+
+  for (let i=0; i<rolesStrList.length; i++) {
+    if (res.targetRole === rolesStrList[i]) targetId = roleList[i].id;
+  }
+
+  let r = await db.query(`delete from roles where id = ${targetId}`);
+  let r2 = await db.query(`update employees set role_id = null where role_id = ${targetId}`);
+  if (r.warningCount === 0 && r2.warningCount === 0) console.log('Successfully deleted role\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
+}
+
+async function delEmployee() {
+  const res = await inquirer.prompt([
+    {
+      type: 'input',
+      message: 'Please enter the first name of the employee to remove:',
+      name: 'firstName'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the last name of the employee to remove:',
+      name: 'lastName'
+    }
+  ]);
+
+  let r = await db.query(`delete from employees where first_name = \'${res.firstName}\' and last_name = \'${res.lastName}\'`);
+  if (r.warningCount === 0) console.log('Successfully deleted employee record\n');
   else console.log('Something went wrong, please consult your database administrator\n');
 }
 
