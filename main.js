@@ -12,7 +12,7 @@ async function main() {
       {
         type: 'list',
         message: 'What would you like to do?',
-        choices: ['View existing data', 'Edit existing data', 'Remove existing data', 'Add new data'],
+        choices: ['View existing data', 'Edit existing data', 'Add new data'],
         name: 'choice'
       },
       {
@@ -31,10 +31,6 @@ async function main() {
     else if (task.choice === 'Edit existing data' && task.table === 'Departments') await editDepartments();
     else if (task.choice === 'Edit existing data' && task.table === 'Roles') await editRoles();
     else if (task.choice === 'Edit existing data' && task.table === 'Employees') await editEmployees();
-    // if removing existing data
-    else if (task.choice === 'Remove existing data' && task.table === 'Departments') await removeDepartment();
-    else if (task.choice === 'Remove existing data' && task.table === 'Roles') await removeRole();
-    else if (task.choice === 'Remove existing data' && task.table === 'Employees') await removeEmployee();
     // if adding existing data
     else if (task.choice === 'Add new data' && task.table === 'Departments') await addDepartment();
     else if (task.choice === 'Add new data' && task.table === 'Roles') await addRole();
@@ -119,29 +115,135 @@ async function editDepartments() {
     }
   ])
 
-  const r = await db.query(`update departments set department = \'${edit.newName}\' where department = \'${edit.oldName}\'`);
-  if (r.warningCount === 0) console.log('Successfully changed name\n');
+  const r = await db.query(`update departments set department = \'${edit.newName}\' 
+    where department = \'${edit.oldName}\'`);
+  if (r.warningCount === 0) console.log('Successfully changed department name\n');
   else console.log('Something went wrong, please consult your database administrator\n');
 }
 
 async function editRoles() {
-  console.log('TO-DO: Edit roles\n');
+  let roleList = await db.query(`select roles.id, roles.title, roles.salary, departments.department 
+    from roles left join departments on roles.department_id = departments.id;`);
+  let rolesStrList = roleList.map(role => `Title: ${role.title}, from ${role.department}`);
+  let targetId = null;
+
+  const res = await inquirer.prompt([
+    {
+      type: 'list',
+      message: 'Select which role to edit:',
+      choices: rolesStrList,
+      name: 'targetRole'
+    },
+    {
+      type: 'input',
+      message: 'New role title: (leave blank for no change)',
+      name: 'newTitle'
+    },
+    {
+      type: 'number',
+      message: 'New role salary: (leave blank for no change)',
+      name: 'newSalary'
+    }
+  ])
+
+  // find id of target role
+  for (let i=0; i<rolesStrList.length; i++) {
+    if (res.targetRole === rolesStrList[i]) {
+      targetId = roleList[i].id;
+      if (res.newTitle === '') res.newTitle = roleList[i].title;
+      if (isNaN(res.newSalary)) {
+        res.newSalary = roleList[i].salary;
+      }
+    }
+  }
+  
+  // make sure salary is a number
+  if (!Number(res.newSalary)) {
+    console.log('Salary must be a numerical value.\n');
+    return;
+  }
+
+  const r = await db.query(`update roles set title = \'${res.newTitle}\', salary = ${res.newSalary}
+  where id = ${targetId}`);
+  if (r.warningCount === 0) console.log('Successfully changed role\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
 }
 
 async function editEmployees() {
-  console.log('TO-DO: Edit employees\n');
-}
+  let roleList = await db.query(`select roles.id, roles.title, departments.department 
+    from roles left join departments on roles.department_id = departments.id;`);
+  let rolesStrList = roleList.map(role => `Title: ${role.title}, from ${role.department}`);
+  let roleId = null;
 
-async function removeDepartment() {
-  console.log('TO-DO: Remove department\n');
-}
+  let res = await inquirer.prompt([
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s first name:',
+      name: 'firstName'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s last name:',
+      name: 'lastName'
+    },
+    {
+      type: 'list',
+      message: 'Please select the employee\'s role:',
+      choices: rolesStrList,
+      name: 'role'
+    }
+  ])
 
-async function removeRole() {
-  console.log('TO-DO: Remove role\n');
-}
+  for (let i=0; i<rolesStrList.length; i++) {
+    if (rolesStrList[i] === res.role) roleId = roleList[i].id;
+  }
 
-async function removeEmployee() {
-  console.log('TO-DO: Remove employee\n');
+  let employee = await db.query(`select * from employees where first_name =\'${res.firstName}\' 
+  and last_name=\'${res.lastName}\' and role_id=${roleId}`);
+
+  if (employee.length < 1) {
+    console.log ('No employee record was found. Please try again.\n');
+    return;
+  }
+  console.log ('\nEmployee Found. Continuing to next step.\n');
+
+  res = await inquirer.prompt([
+    {
+      type: 'list',
+      message: 'Please choose the employee\'s new role:',
+      choices: rolesStrList,
+      name: 'newRole'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s new manager\'s first name: (leave blank for no manager)',
+      name: 'newFirstName'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s new manager\'s last name: (leave blank for no manager)',
+      name: 'newLastName'
+    }
+  ])
+  // find new role
+  for (let i=0; i<rolesStrList.length; i++) {
+    if (rolesStrList[i] === res.role) employee[0].role_id = roleList[i].id;
+  }
+  // find new manager
+  if (res.newLastName !== '') {
+    let r = await db.query(`select * from employees where first_name =\'${res.firstName}\' 
+    and last_name=\'${res.lastName}\'`);
+    if (r.length < 1) {
+      console.log('Manager could not be found. Continuing without changing manager.\n');
+      return;
+    }
+    else employee[0].manager_id = r[0].id;
+  }
+  else employee[0].manager_id = null;
+  // fill in new data
+  let r = await db.query(`update employees set role_id = ${employee[0].role_id}, manager_id = ${employee[0].manager_id} where id = ${employee[0].id}`);
+  if (r.warningCount === 0) console.log('Successfully edited employee record\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
 }
 
 async function addDepartment() {
@@ -166,7 +268,7 @@ async function addDepartment() {
 async function addRole() {
   let deptList = await db.query(`select * from departments`);
   let deptNames = deptList.map(dept => dept.department);
-  let deptId = -1;
+  let deptId = null;
   
   const res = await inquirer.prompt([
     {
