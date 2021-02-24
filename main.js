@@ -28,17 +28,17 @@ async function main() {
     else if (task.choice === 'View existing data' && task.table === 'Roles') console.table(await viewRoles());
     else if (task.choice === 'View existing data' && task.table === 'Employees') console.table(await viewEmployees());
     // if editing existing data
-    else if (task.choice === 'Edit existing data' && task.table === 'Departments') editDepartments();
-    else if (task.choice === 'Edit existing data' && task.table === 'Roles') editRoles();
-    else if (task.choice === 'Edit existing data' && task.table === 'Employees') editEmployees();
+    else if (task.choice === 'Edit existing data' && task.table === 'Departments') await editDepartments();
+    else if (task.choice === 'Edit existing data' && task.table === 'Roles') await editRoles();
+    else if (task.choice === 'Edit existing data' && task.table === 'Employees') await editEmployees();
     // if removing existing data
-    else if (task.choice === 'Remove existing data' && task.table === 'Departments') removeDepartment();
-    else if (task.choice === 'Remove existing data' && task.table === 'Roles') removeRole();
-    else if (task.choice === 'Remove existing data' && task.table === 'Employees') removeEmployee();
+    else if (task.choice === 'Remove existing data' && task.table === 'Departments') await removeDepartment();
+    else if (task.choice === 'Remove existing data' && task.table === 'Roles') await removeRole();
+    else if (task.choice === 'Remove existing data' && task.table === 'Employees') await removeEmployee();
     // if adding existing data
-    else if (task.choice === 'Add new data' && task.table === 'Departments') addDepartment();
-    else if (task.choice === 'Add new data' && task.table === 'Roles') addRole();
-    else if (task.choice === 'Add new data' && task.table === 'Employees') addEmployee();
+    else if (task.choice === 'Add new data' && task.table === 'Departments') await addDepartment();
+    else if (task.choice === 'Add new data' && task.table === 'Roles') await addRole();
+    else if (task.choice === 'Add new data' && task.table === 'Employees') await addEmployee();
 
     // exit loop
     const exit = await inquirer.prompt([
@@ -102,14 +102,14 @@ async function viewEmployees() {
 }
 
 async function editDepartments() {
-  let departmentsArr = await db.query(`select departments.department from departments`);
-  departmentsArr = departmentsArr.map(arr => arr.department);
+  let deptList = await db.query(`select departments.department from departments`);
+  deptList = deptList.map(arr => arr.department);
 
   const edit = await inquirer.prompt([
     {
       type: 'list',
       message: 'which department name would you like to change?',
-      choices: departmentsArr,
+      choices: deptList,
       name: 'oldName'
     },
     {
@@ -120,28 +120,28 @@ async function editDepartments() {
   ])
 
   const r = await db.query(`update departments set department = \'${edit.newName}\' where department = \'${edit.oldName}\'`);
-  if (r.warningCount === 0) console.log('Successfully changed name');
-  else console.log('Something went wrong, please consult your database administrator');
+  if (r.warningCount === 0) console.log('Successfully changed name\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
 }
 
 async function editRoles() {
-  console.log('TO-DO: Edit roles');
+  console.log('TO-DO: Edit roles\n');
 }
 
 async function editEmployees() {
-  console.log('TO-DO: Edit employees');
+  console.log('TO-DO: Edit employees\n');
 }
 
 async function removeDepartment() {
-  console.log('TO-DO: Remove department');
+  console.log('TO-DO: Remove department\n');
 }
 
 async function removeRole() {
-  console.log('TO-DO: Remove role');
+  console.log('TO-DO: Remove role\n');
 }
 
 async function removeEmployee() {
-  console.log('TO-DO: Remove employee');
+  console.log('TO-DO: Remove employee\n');
 }
 
 async function addDepartment() {
@@ -152,15 +152,114 @@ async function addDepartment() {
       name: 'newDept'
     }
   ])
-  const r = await db.query(`INSERT INTO departments (department) VALUES (\'${res.newDept}\');`);
-  if (r.warningCount === 0) console.log('Successfully changed name');
-  else console.log('Something went wrong, please consult your database administrator');
+  // check if dept already exists
+  let r = await db.query(`SELECT * FROM departments WHERE department = \'${res.newDept}\'`);
+  if (r.length > 0) {
+    console.log('Department already exists. Only new departments can be added.\n');
+    return;
+  }
+  r = await db.query(`INSERT INTO departments (department) VALUES (\'${res.newDept}\');`);
+  if (r.warningCount === 0) console.log('Successfully added new department\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
 }
 
 async function addRole() {
-  console.log('TO-DO: Add role');
+  let deptList = await db.query(`select * from departments`);
+  let deptNames = deptList.map(dept => dept.department);
+  let deptId = -1;
+  
+  const res = await inquirer.prompt([
+    {
+      type: 'input',
+      message: 'Please enter the name of the new role:',
+      name: 'title'
+    },
+    {
+      type: 'number',
+      message: 'Please enter the role\'s salary:',
+      name: 'salary'
+    },
+    {
+      type: 'list',
+      message: 'Which department does this role belong to?',
+      choices: deptNames,
+      name: 'dept'
+    }
+  ])
+  // get ID for department
+  for (let i=0; i< deptList.length; i++) {
+    if (res.dept === deptList[i].department) {
+      deptId = deptList[i].id;
+      break;
+    }
+  }
+  // check if role already exists
+  let r = await db.query('SELECT * FROM roles');
+  for (let i=0; i<allRoles.length; i++) {
+    if (res.title === allRoles[i].title && deptId === allRoles[i].departmentId) {
+      console.log('This role already exists. Only new roles can be added.\n');
+      return;
+    }
+  }
+  r = await db.query(`INSERT INTO roles (title, salary, department_id) VALUES (\'${res.title}\', ${res.salary}, ${deptId});`);
+  if (r.warningCount === 0) console.log('Successfully added new department\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
 }
 
 async function addEmployee() {
-  console.log('TO-DO: Add employee');
+  let roleList = await db.query(`select roles.id,roles.title,departments.department 
+    from roles left join departments on roles.department_id = departments.id;`);
+  let rolesStrList = roleList.map(role => `Title: ${role.title}, from ${role.department}`);
+  let roleId = null;
+  let managerId = null;
+  let res = await inquirer.prompt([
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s first name:',
+      name: 'firstName'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s last name:',
+      name: 'lastName'
+    },
+    {
+      type: 'list',
+      message: 'Please select the employee\'s role:',
+      choices: rolesStrList,
+      name: 'role'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s manager\'s first name: (leave blank if no manager)',
+      name: 'managerFirstName'
+    },
+    {
+      type: 'input',
+      message: 'Please enter the employee\'s manager\'s last name: (leave blank if no manager)',
+      name: 'managerLastName'
+    }
+  ]);
+  // find roleId
+  for (let i=0; i<rolesStrList.length; i++) {
+    if (rolesStrList[i] === res.role) roleId = roleList[i].id;
+  }
+  if (roleId === null) {
+    console.log('Role cound not be found.\n');
+    return;
+  }
+  // find managerId
+  if (res.managerLastName !== '') {
+    const r = await db.query(`select * from employees where first_name = \'${res.managerFirstName}\' and last_name = \'${res.managerLastName}\'`);
+    if (r.length < 1) {
+      console.log('Manager not found. Please make sure the spelling is correct.\n');
+      return;
+    }
+    managerId = r[0].id;
+  }
+
+  let r = await db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id) 
+    VALUES (\'${res.firstName}\', \'${res.lastName}\', ${roleId}, ${managerId});`);
+  if (r.warningCount === 0) console.log('Successfully added new employee.\n');
+  else console.log('Something went wrong, please consult your database administrator\n');
 }
